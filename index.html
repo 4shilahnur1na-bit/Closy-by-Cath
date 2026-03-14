@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Closy Garden - Smart Wardrobe</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F3EEF1; }
+        .font-syne { font-family: 'Syne', sans-serif; }
+        .font-latin { font-family: 'Playfair Display', serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-card { background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(20px); border: 2px solid rgba(255, 255, 255, 0.6); }
+        .sakura-bg { background-image: radial-gradient(#EA9CAF 1px, transparent 1px); background-size: 24px 24px; opacity: 0.1; }
+        @keyframes float-around {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(30px, 100px) rotate(180deg); }
+            100% { transform: translate(0, 200px) rotate(360deg); }
+        }
+        .floating-element { position: absolute; pointer-events: none; animation: float-around 15s linear infinite; opacity: 0.35; }
+        @keyframes bounce-gentle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .macaron-btn { animation: bounce-gentle 3s ease-in-out infinite; }
+        @keyframes scan { 0% { transform: translateY(0); } 100% { transform: translateY(180px); } }
+        .animate-scan { animation: scan 2s linear infinite; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- DATA ATLAS ---
+        const kategoriPakaian = [
+            { grup: "Atasan", items: ["Kemeja", "Blouse", "Kaos", "Sweater", "Hoodie", "Cardigan", "Tunik", "Tank Top", "Crop Top", "Turtle Neck", "Jersey", "Baju Koko", "Kebaya"] },
+            { grup: "Bawahan", items: ["Jeans", "Chinos", "Cargo", "Jogger", "Formal", "Kulot", "Legging", "Hot Pants", "Rok Maxi", "Rok Plisket", "Rok Pensil"] },
+            { grup: "Outerwear", items: ["Blazer", "Bomber", "Jaket Denim", "Jaket Kulit", "Parka", "Trench Coat", "Windbreaker", "Kimono Outer"] },
+            { grup: "Terusan", items: ["Dress", "Gamis", "Abaya", "Jumpsuit", "Overall", "Kaftan", "Cheongsam", "Hanbok"] },
+            { grup: "Headwear", items: ["Pashmina", "Segiempat", "Bergo", "Topi Baseball", "Beanie", "Bucket Hat", "Beret"] },
+            { grup: "Aksesori", items: ["Kaos Kaki", "Syal", "Sabuk", "Dasi", "Sarung Tangan", "Manset", "Stocking"] }
+        ];
+
+        const bahanPakaian = [
+            { grup: "Alami", items: ["Katun", "Linen", "Sutra", "Wol", "Kasmir", "Rami", "Kulit Asli"] },
+            { grup: "Sintetis", items: ["Polyester", "Nylon", "Spandek", "Rayon", "Viscose", "Tencel", "Modal"] },
+            { grup: "Tekstur", items: ["Denim", "Canvas", "Beludru", "Satin", "Sifon", "Organza", "Tulle", "Brokat", "Flannel", "Corduroy", "Scuba"] },
+            { grup: "Tradisional", items: ["Batik Tulis", "Batik Cap", "Tenun Ikat", "Songket", "Ulos", "Lurik"] }
+        ];
+
+        const databaseWarna = [
+            { grup: "Soft", items: ["Sakura Pink", "Matcha Green", "Baby Blue", "Lilac", "Peach", "Mint", "Cream", "Broken White"] },
+            { grup: "Earth", items: ["Terracotta", "Olive", "Sage", "Milo", "Khaki", "Beige", "Coffee", "Mustard"] },
+            { grup: "Bold", items: ["Midnight Blue", "Emerald", "Maroon", "Charcoal", "Hitam", "Putih", "Navy", "Royal Purple"] }
+        ];
+
+        // --- COMPONENTS ---
+        const SearchableSelect = ({ label, options, value, onChange }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [search, setSearch] = useState("");
+
+            const filteredOptions = useMemo(() => {
+                const flat = options.flatMap(g => g.items.map(item => ({ item, grup: g.grup })));
+                return flat.filter(o => o.item.toLowerCase().includes(search.toLowerCase()));
+            }, [options, search]);
+
+            return (
+                <div className="relative space-y-2">
+                    <label className="text-[10px] font-bold text-[#D56989] uppercase tracking-widest ml-2 opacity-70">{label}</label>
+                    <button 
+                        onClick={() => setIsOpen(!isOpen)}
+                        className="w-full p-4 rounded-3xl flex items-center justify-between font-medium text-sm bg-white/60 border border-white/80 shadow-sm backdrop-blur-md transition-all hover:bg-white/80 active:scale-95 text-left"
+                    >
+                        <span className="text-[#D56989]/80 italic font-serif truncate pr-2">{value}</span>
+                        <i data-lucide="filter" className="w-3.5 h-3.5 text-[#EA9CAF]"></i>
+                    </button>
+
+                    {isOpen && (
+                        <div className="absolute z-[100] mt-2 w-full bg-[#F3EEF1]/95 rounded-3xl shadow-2xl border border-white/50 overflow-hidden backdrop-blur-xl">
+                            <div className="p-4 border-b border-white/50 flex items-center gap-2">
+                                <i data-lucide="search" className="w-3.5 h-3.5 text-[#EA9CAF]"></i>
+                                <input 
+                                    autoFocus
+                                    className="bg-transparent border-none outline-none text-xs w-full font-medium text-[#D56989]"
+                                    placeholder={`Cari ${label}...`}
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                                <button onClick={() => setIsOpen(false)}><i data-lucide="x" className="w-3.5 h-3.5 text-[#EA9CAF]"></i></button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto no-scrollbar p-2">
+                                {filteredOptions.map((opt, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => { onChange(opt.item); setIsOpen(false); setSearch(""); }}
+                                        className="w-full text-left p-3 rounded-2xl text-[11px] font-semibold text-[#D56989]/70 flex justify-between items-center hover:bg-[#EA9CAF]/10 transition-colors"
+                                    >
+                                        <span className="font-serif">{opt.item}</span>
+                                        <span className="text-[8px] text-[#C2DC80] uppercase font-sans tracking-tighter">{opt.grup}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        function App() {
+            const [isStarted, setIsStarted] = useState(false);
+            const [pakaian, setPakaian] = useState([]);
+            const [form, setForm] = useState({ jenis: 'Kemeja', warna: 'Sakura Pink', bahan: 'Katun' });
+            const [isScanning, setIsScanning] = useState(false);
+            const [activeTab, setActiveTab] = useState("Atasan");
+
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            const simpanPakaian = () => {
+                const gantungRegex = /kemeja|dress|jas|blazer|kebaya|outer|coat|abaya|gamis|tunik/i;
+                let metode = form.jenis.match(gantungRegex) ? 'GANTUNG' : 'LIPAT';
+                let grup = kategoriPakaian.find(g => g.items.includes(form.jenis))?.grup || "Lainnya";
+                
+                const baru = {
+                    id: Date.now(),
+                    ...form,
+                    grup,
+                    metode,
+                    saran: metode === 'GANTUNG' ? 'Gunakan hanger agar bentuk tetap rapi.' : 'Lipat rapi agar tidak kusut.',
+                    createdAt: new Date().toLocaleDateString()
+                };
+                setPakaian([baru, ...pakaian]);
+            };
+
+            const hapusPakaian = (id) => {
+                setPakaian(pakaian.filter(p => p.id !== id));
+            };
+
+            if (!isStarted) {
+                return (
+                    <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#F3EEF1] p-10 text-center overflow-hidden">
+                        {[...Array(10)].map((_, i) => (
+                            <div key={i} className="floating-element" style={{ left: (Math.random()*100)+'%', top: '-50px', animationDelay: i+'s' }}>
+                                <div className="text-[#EA9CAF] opacity-20"><i data-lucide="flower-2" className="w-6 h-6"></i></div>
+                            </div>
+                        ))}
+                        <div className="relative z-10 space-y-8">
+                            <h2 className="font-latin text-4xl text-[#D56989] italic">Welcome to Closy</h2>
+                            <p className="text-[#C2DC80] text-[10px] font-bold uppercase tracking-[0.5em]">Ur Smart Wardrobe Assistant</p>
+                            <div className="flex justify-center py-10">
+                                <button 
+                                    onClick={() => setIsStarted(true)}
+                                    className="macaron-btn relative w-32 h-32 flex items-center justify-center group outline-none"
+                                >
+                                    <div className="absolute top-0 w-28 h-12 bg-[#EA9CAF] rounded-full shadow-md z-10"></div>
+                                    <div className="absolute top-8 w-26 h-6 bg-white/90 rounded-full z-0 shadow-inner"></div>
+                                    <div className="absolute bottom-0 w-28 h-12 bg-[#EA9CAF] rounded-full shadow-md z-10 flex items-center justify-center">
+                                        <span className="text-white font-bold text-[10px] uppercase tracking-widest mt-1">Mulai</span>
+                                    </div>
+                                </button>
+                            </div>
+                            <p className="text-[#D56989]/40 text-[9px] font-bold uppercase tracking-widest max-w-[200px] mx-auto">Ketuk macaron sakura untuk merapikan duniamu</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen pb-20 relative">
+                    <div className="fixed inset-0 sakura-bg pointer-events-none"></div>
+                    
+                    <header className="sticky top-0 z-50 glass-card px-8 py-7 flex justify-between items-center">
+                        <div>
+                            <h1 className="font-syne text-3xl font-extrabold text-[#D56989] tracking-tight">Closy.</h1>
+                            <p className="font-latin text-[10px] text-[#C2DC80] mt-0.5">Ur Smart Assistant</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#EA9CAF] to-[#C2DC80] opacity-40 border-2 border-white"></div>
+                    </header>
+
+                    <main className="max-w-md mx-auto p-8 space-y-12">
+                        {/* Scan Section */}
+                        <section className="relative rounded-[3rem] p-10 overflow-hidden shadow-xl bg-gradient-to-br from-[#EA9CAF] to-[#D56989] text-white">
+                            <div className="relative z-10 space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <i data-lucide="sparkles" className="w-4 h-4"></i>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Smart Analysis</span>
+                                </div>
+                                <p className="font-latin text-xl italic pr-4">Pindai isi lemarimu dalam hitungan detik.</p>
+                                <button 
+                                    onClick={() => {
+                                        setIsScanning(true);
+                                        setTimeout(() => {
+                                            const allTypes = kategoriPakaian.flatMap(k => k.items);
+                                            setForm({ ...form, jenis: allTypes[Math.floor(Math.random()*allTypes.length)] });
+                                            setIsScanning(false);
+                                        }, 2000);
+                                    }}
+                                    className="bg-white text-[#D56989] px-10 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg"
+                                >
+                                    {isScanning ? <i data-lucide="refresh-cw" className="w-4 h-4 animate-spin"></i> : <i data-lucide="camera" className="w-4 h-4"></i>}
+                                    {isScanning ? 'Membaca...' : 'Mulai Foto'}
+                                </button>
+                            </div>
+                            {isScanning && <div className="absolute top-0 left-0 w-full h-1.5 bg-white/40 animate-scan"></div>}
+                        </section>
+
+                        {/* Input Section */}
+                        <section className="space-y-6">
+                            <div className="flex items-center gap-2 px-2 text-[#D56989]">
+                                <i data-lucide="leaf" className="w-4 h-4 text-[#C2DC80]"></i>
+                                <h2 className="text-[11px] font-bold uppercase tracking-widest">Koleksi Baru</h2>
+                            </div>
+                            <div className="glass-card rounded-[3rem] p-8 space-y-8">
+                                <SearchableSelect label="Jenis Pakaian" options={kategoriPakaian} value={form.jenis} onChange={(v) => setForm({...form, jenis: v})} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <SearchableSelect label="Bahan" options={bahanPakaian} value={form.bahan} onChange={(v) => setForm({...form, bahan: v})} />
+                                    <SearchableSelect label="Warna" options={databaseWarna} value={form.warna} onChange={(v) => setForm({...form, warna: v})} />
+                                </div>
+                                <button onClick={simpanPakaian} className="w-full bg-[#C2DC80] text-white py-5 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+                                    Simpan Koleksi <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </section>
+
+                        {/* Closet Section */}
+                        <section className="space-y-6">
+                            <div className="flex justify-between items-center px-2">
+                                <h2 className="text-[11px] font-bold text-[#D56989] uppercase tracking-widest">My Closet</h2>
+                                <span className="text-[10px] font-bold text-[#EA9CAF]">{pakaian.length} Items</span>
+                            </div>
+
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
+                                {kategoriPakaian.map(k => (
+                                    <button 
+                                        key={k.grup}
+                                        onClick={() => setActiveTab(k.grup)}
+                                        className={`px-6 py-3 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${activeTab === k.grup ? 'bg-[#EA9CAF] text-white border-[#EA9CAF]' : 'bg-white/50 text-[#D56989]/50 border-white'}`}
+                                    >
+                                        {k.grup}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="grid gap-6">
+                                {pakaian.filter(p => p.grup === activeTab).map(item => (
+                                    <div key={item.id} className="glass-card p-5 rounded-[2.5rem] flex gap-5 animate-in fade-in slide-in-from-bottom-4">
+                                        <div className="w-20 h-28 rounded-[2rem] bg-white/50 flex flex-col items-center justify-center text-[#EA9CAF]/40">
+                                            <i data-lucide={item.metode === 'GANTUNG' ? "shirt" : "box"} className="w-8 h-8"></i>
+                                            <span className="text-[7px] font-black mt-2">{item.metode}</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0 py-1">
+                                            <div className="flex justify-between items-start">
+                                                <h4 className="font-serif font-bold text-[#D56989] text-lg truncate">{item.jenis}</h4>
+                                                <button onClick={() => hapusPakaian(item.id)} className="text-[#D56989]/20 hover:text-red-300"><i data-lucide="x" className="w-4 h-4"></i></button>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
+                                                <span className="text-[8px] font-bold text-[#EA9CAF] uppercase">{item.warna}</span>
+                                                <span className="text-[8px] font-bold text-[#C2DC80] uppercase">{item.bahan}</span>
+                                            </div>
+                                            <p className="mt-3 text-[9px] italic font-serif text-[#D56989]/50 leading-tight">
+                                                {item.saran}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {pakaian.filter(p => p.grup === activeTab).length === 0 && (
+                                    <div className="py-20 text-center opacity-30 italic text-[11px] text-[#D56989]">Wilayah ini masih kosong...</div>
+                                )}
+                            </div>
+                        </section>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
